@@ -3,6 +3,7 @@ import pandas
 import h5py
 import numpy as np
 from molecules.utils import one_hot_array, one_hot_index
+import functools
 
 from sklearn.model_selection import train_test_split
 
@@ -31,7 +32,7 @@ def chunk_iterator(dataset, chunk_size=1000):
 
 def main():
     args = get_arguments()
-    data = pandas.read_hdf(args.infile, 'table')
+    data = pandas.read_csv(args.infile)
     keys = data[args.smiles_column].map(len) < 121
 
     if args.length <= len(keys):
@@ -40,6 +41,7 @@ def main():
         data = data[keys]
 
     structures = data[args.smiles_column].map(lambda x: list(x.ljust(120)))
+    structures = structures.apply(lambda lst: [lett.encode('utf8') for lett in lst])
 
     if args.property_column:
         properties = data[args.property_column][keys]
@@ -49,7 +51,7 @@ def main():
     train_idx, test_idx = map(np.array,
                               train_test_split(structures.index, test_size = 0.20))
 
-    charset = list(reduce(lambda x, y: set(y) | x, structures, set()))
+    charset = list(functools.reduce(lambda x, y: set(y) | x, structures, set()))
 
     one_hot_encoded_fn = lambda row: map(lambda x: one_hot_array(x, len(charset)),
                                                 one_hot_index(row, charset))

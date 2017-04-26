@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 
 def one_hot_array(i, n):
-    return map(int, [ix == i for ix in xrange(n)])
+    return map(int, [ix == i for ix in range(n)])
 
 def one_hot_index(vec, charset):
     return map(charset.index, vec)

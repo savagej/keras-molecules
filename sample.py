@@ -12,8 +12,8 @@ from molecules.utils import one_hot_array, one_hot_index, from_one_hot_array, \
 
 from pylab import figure, axes, scatter, title, show
 
-from rdkit import Chem
-from rdkit.Chem import Draw
+#from rdkit import Chem
+#from rdkit.Chem import Draw
 
 LATENT_DIM = 292
 TARGET = 'autoencoder'
