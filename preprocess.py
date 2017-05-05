@@ -20,6 +20,9 @@ def get_arguments():
                         help="Name of the column that contains the SMILES strings. Default: %s" % SMILES_COL_NAME)
     parser.add_argument('--property_column', type=str,
                         help="Name of the column that contains the property values to predict. Default: None")
+    parser.add_argument('--full_file', type=str,
+                        help="Full file without train_test split")
+ 
     return parser.parse_args()
 
 def chunk_iterator(dataset, chunk_size=1000):
@@ -68,7 +71,7 @@ def main():
                 new_data[chunk_ixs, ...] = chunk
             else:
                 new_data[chunk_ixs, ...] = apply_fn(chunk)
-
+    
     create_chunk_dataset(h5f, 'data_train', train_idx,
                          (len(train_idx), 120, len(charset)),
                          apply_fn=lambda ch: np.array(map(one_hot_encoded_fn,
@@ -77,11 +80,26 @@ def main():
                          (len(test_idx), 120, len(charset)),
                          apply_fn=lambda ch: np.array(map(one_hot_encoded_fn,
                                                           structures[ch])))
-
+    
     if args.property_column:
         h5f.create_dataset('property_train', data = properties[train_idx])
         h5f.create_dataset('property_test', data = properties[test_idx])
     h5f.close()
+    if args.full_file:
+        h5f_full = h5py.File(args.full_file, 'w')
+        h5f_full.create_dataset('charset', data = charset)
+        create_chunk_dataset(h5f_full, 'data_test', structures.index,
+                             (len(structures.index), 120, len(charset)),
+                             apply_fn=lambda ch: np.array(map(one_hot_encoded_fn,
+                                                          structures[ch])))
+        structures = [ ''.join(x) for x in structures]
+        h5f_full.create_dataset('structures', data = structures)
+        if args.property_column:
+            h5f_full.create_dataset('property_train', data = properties[structures.index])
+        h5f_full.close()
+                             
+
+       
 
 if __name__ == '__main__':
     main()
