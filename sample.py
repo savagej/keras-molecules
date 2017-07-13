@@ -27,6 +27,8 @@ def get_arguments():
                         help='What model to sample from: autoencoder, encoder, decoder.')
     parser.add_argument('--latent_dim', type=int, metavar='N', default=LATENT_DIM,
                         help='Dimensionality of the latent representation.')
+    parser.add_argument('--do_conv_encoder', type=bool, metavar='True', default=True,
+                        help='Whether to use a convolutional or recurrent encoder.')
     return parser.parse_args()
 
 def read_latent_data(filename):
@@ -38,10 +40,10 @@ def read_latent_data(filename):
 
 def autoencoder(args, model):
     latent_dim = args.latent_dim
-    data, charset = load_dataset(args.data, split = False)
+    data, charset = load_dataset(args.data, split = False, do_conv_encoder=args.do_conv_encoder)
 
     if os.path.isfile(args.model):
-        model.load(charset, args.model, latent_rep_size = latent_dim)
+        model.load(charset, args.model, latent_rep_size = latent_dim, do_conv_encoder=args.do_conv_encoder)
     else:
         raise ValueError("Model file %s doesn't exist" % args.model)
 
@@ -60,16 +62,17 @@ def decoder(args, model):
     else:
         raise ValueError("Model file %s doesn't exist" % args.model)
 
-    sampled = model.decoder.predict(data[0].reshape(1, latent_dim)).argmax(axis=2)[0]
-    sampled = decode_smiles_from_indexes(sampled, charset)
-    print(sampled)
+    for line in data:
+        sampled = model.decoder.predict(line.reshape(1, latent_dim)).argmax(axis=2)[0]
+        sampled = decode_smiles_from_indexes(sampled, charset)
+        print(sampled)
 
 def encoder(args, model):
     latent_dim = args.latent_dim
     data, charset = load_dataset(args.data, split = False)
 
     if os.path.isfile(args.model):
-        model.load(charset, args.model, latent_rep_size = latent_dim)
+        model.load(charset, args.model, latent_rep_size = latent_dim, do_conv_encoder=args.do_conv_encoder)
     else:
         raise ValueError("Model file %s doesn't exist" % args.model)
 

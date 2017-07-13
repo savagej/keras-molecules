@@ -16,11 +16,13 @@ class MoleculeVAE():
                charset,
                max_length = 120,
                latent_rep_size = 292,
-               weights_file = None):
+               weights_file = None,
+               do_conv_encoder=True):
         charset_length = len(charset)
         
         x = Input(shape=(max_length, charset_length))
-        _, z = self._buildEncoder(x, latent_rep_size, max_length)
+        _, z = self._buildEncoder(x, latent_rep_size, max_length,
+                                  do_conv_encoder=do_conv_encoder)
         self.encoder = Model(x, z)
 
         encoded_input = Input(shape=(latent_rep_size,))
@@ -35,7 +37,8 @@ class MoleculeVAE():
         )
 
         x1 = Input(shape=(max_length, charset_length))
-        vae_loss, z1 = self._buildEncoder(x1, latent_rep_size, max_length)
+        vae_loss, z1 = self._buildEncoder(x1, latent_rep_size, max_length, 
+                                          do_conv_encoder=do_conv_encoder)
         self.autoencoder = Model(
             x1,
             self._buildDecoder(
@@ -55,12 +58,22 @@ class MoleculeVAE():
                                  loss = vae_loss,
                                  metrics = ['accuracy'])
 
-    def _buildEncoder(self, x, latent_rep_size, max_length, epsilon_std = 0.01):
-        h = Convolution1D(9, 9, activation = 'relu', name='conv_1')(x)
-        h = Convolution1D(9, 9, activation = 'relu', name='conv_2')(h)
-        h = Convolution1D(10, 11, activation = 'relu', name='conv_3')(h)
-        h = Flatten(name='flatten_1')(h)
-        h = Dense(435, activation = 'relu', name='dense_1')(h)
+    def _buildEncoder(self, x, latent_rep_size, max_length, epsilon_std = 0.01,
+                      do_conv_encoder=True):
+        if do_conv_encoder:
+            print("Using convolutional encoder")
+            h = Convolution1D(9, 9, activation = 'relu', name='conv_1')(x)
+            h = Convolution1D(9, 9, activation = 'relu', name='conv_2')(h)
+            h = Convolution1D(10, 11, activation = 'relu', name='conv_3')(h)
+            h = Flatten(name='flatten_1')(h)
+            h = Dense(435, activation = 'relu', name='dense_1')(h)
+        else:
+            print("Using recurrent encoder")
+            h = GRU(501, return_sequences = True, name='gru_en_1')(x)
+            h = GRU(501, return_sequences = True, name='gru_en_2')(h)
+            h = GRU(501, return_sequences = False, name='gru_en_3')(h)
+            #h = Flatten(name='flatten_1')(h)
+            h = Dense(435, activation = 'relu', name='dense_1')(h)
 
         def sampling(args):
             z_mean_, z_log_var_ = args
@@ -91,5 +104,5 @@ class MoleculeVAE():
     def save(self, filename):
         self.autoencoder.save_weights(filename)
     
-    def load(self, charset, weights_file, latent_rep_size = 292):
-        self.create(charset, weights_file = weights_file, latent_rep_size = latent_rep_size)
+    def load(self, charset, weights_file, latent_rep_size = 292, do_conv_encoder=True):
+        self.create(charset, weights_file = weights_file, latent_rep_size = latent_rep_size, do_conv_encoder=do_conv_encoder)

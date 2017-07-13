@@ -4,10 +4,13 @@ import h5py
 import numpy as np
 
 def one_hot_array(i, n):
-    return map(int, [ix == i for ix in range(n)])
+    return [1 if ix == i else 0 for ix in range(n)]
 
 def one_hot_index(vec, charset):
-    return map(charset.index, vec)
+    return [charset.index(x) for x in vec]
+
+def one_hot_array_fast(i, charset):
+    return [1 if ix == i else 0 for ix in charset]
 
 def from_one_hot_array(vec):
     oh = np.where(vec == 1)
@@ -16,7 +19,7 @@ def from_one_hot_array(vec):
     return int(oh[0][0])
 
 def decode_smiles_from_indexes(vec, charset):
-    return "".join(map(lambda x: charset[x], vec)).strip()
+    return "".join(map(lambda x: charset[x].decode("utf8"), vec)).strip()
 
 def load_dataset(filename, split = True):
     h5f = h5py.File(filename, 'r')

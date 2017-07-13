@@ -2,7 +2,7 @@ import argparse
 import pandas
 import h5py
 import numpy as np
-from molecules.utils import one_hot_array, one_hot_index
+from molecules.utils import one_hot_array, one_hot_index, one_hot_array_fast
 import functools
 
 from sklearn.model_selection import train_test_split
@@ -56,9 +56,6 @@ def main():
 
     charset = list(functools.reduce(lambda x, y: set(y) | x, structures, set()))
 
-    one_hot_encoded_fn = lambda row: map(lambda x: one_hot_array(x, len(charset)),
-                                                one_hot_index(row, charset))
-
     h5f = h5py.File(args.outfile, 'w')
     h5f.create_dataset('charset', data = charset)
 
@@ -71,15 +68,16 @@ def main():
                 new_data[chunk_ixs, ...] = chunk
             else:
                 new_data[chunk_ixs, ...] = apply_fn(chunk)
+
+    def one_hot_fn(ch):
+        return np.array([[one_hot_array_fast(i, charset) for i in x] for x in structures[ch]])
     
     create_chunk_dataset(h5f, 'data_train', train_idx,
                          (len(train_idx), 120, len(charset)),
-                         apply_fn=lambda ch: np.array(map(one_hot_encoded_fn,
-                                                          structures[ch])))
+                         apply_fn=one_hot_fn)
     create_chunk_dataset(h5f, 'data_test', test_idx,
                          (len(test_idx), 120, len(charset)),
-                         apply_fn=lambda ch: np.array(map(one_hot_encoded_fn,
-                                                          structures[ch])))
+                         apply_fn=one_hot_fn)
     
     if args.property_column:
         h5f.create_dataset('property_train', data = properties[train_idx])
@@ -90,8 +88,7 @@ def main():
         h5f_full.create_dataset('charset', data = charset)
         create_chunk_dataset(h5f_full, 'data_test', structures.index,
                              (len(structures.index), 120, len(charset)),
-                             apply_fn=lambda ch: np.array(map(one_hot_encoded_fn,
-                                                          structures[ch])))
+                             apply_fn=one_hot_fn)
         structures = [ ''.join(x) for x in structures]
         h5f_full.create_dataset('structures', data = structures)
         if args.property_column:

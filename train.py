@@ -24,6 +24,11 @@ def get_arguments():
                         help='Number of samples to process per minibatch during training.')
     parser.add_argument('--random_seed', type=int, metavar='N', default=RANDOM_SEED,
                         help='Seed to use to start randomizer for shuffling.')
+    conv_parser = parser.add_mutually_exclusive_group(required=False)
+    conv_parser.add_argument('--do_conv_encoder', dest='do_conv_encoder', action='store_true')
+    conv_parser.add_argument('--do_recu_encoder', dest='do_conv_encoder', action='store_false')
+    parser.set_defaults(do_conv_encoder=True)
+
     return parser.parse_args()
 
 def main():
@@ -38,9 +43,11 @@ def main():
     data_train, data_test, charset = load_dataset(args.data)
     model = MoleculeVAE()
     if os.path.isfile(args.model):
-        model.load(charset, args.model, latent_rep_size = args.latent_dim)
+        model.load(charset, args.model, latent_rep_size = args.latent_dim, 
+                     do_conv_encoder=args.do_conv_encoder)
     else:
-        model.create(charset, latent_rep_size = args.latent_dim)
+        model.create(charset, latent_rep_size = args.latent_dim, 
+                     do_conv_encoder=args.do_conv_encoder)
 
     checkpointer = ModelCheckpoint(filepath = args.model,
                                    verbose = 1,
@@ -55,7 +62,7 @@ def main():
         data_train,
         data_train,
         shuffle = True,
-        nb_epoch = args.epochs,
+        epochs = args.epochs,
         batch_size = args.batch_size,
         callbacks = [checkpointer, reduce_lr],
         validation_data = (data_test, data_test)
