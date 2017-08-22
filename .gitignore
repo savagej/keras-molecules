@@ -5,3 +5,11 @@ target/
 *.h5
 
 data/
+
+\.idea/
+
+runs/
+
+*.png
+
+notebooks/
