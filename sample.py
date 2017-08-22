@@ -29,7 +29,7 @@ def get_arguments():
                         help='Dimensionality of the latent representation.')
     parser.add_argument('--do_conv_encoder', type=bool, metavar='True', default=True,
                         help='Whether to use a convolutional or recurrent encoder.')
-    return parser.parse_args()
+    return parser
 
 def read_latent_data(filename):
     h5f = h5py.File(filename, 'r')
@@ -37,6 +37,18 @@ def read_latent_data(filename):
     charset =  h5f['charset'][:]
     h5f.close()
     return (data, charset)
+    
+def read_charset(filename):
+    h5f = h5py.File(filename, 'r')
+    charset =  h5f['charset'][:]
+    h5f.close()
+    return charset
+    
+def save_latent_data(filename, charset, x_latent):
+    h5f = h5py.File(filename, 'w')
+    h5f.create_dataset('charset', data = charset)
+    h5f.create_dataset('latent_vectors', data = x_latent)
+    h5f.close()
 
 def autoencoder(args, model):
     latent_dim = args.latent_dim
@@ -53,7 +65,7 @@ def autoencoder(args, model):
     print(mol)
     print(sampled)
 
-def decoder(args, model):
+def decoder(args, model=MoleculeVAE(), verbose=False):
     latent_dim = args.latent_dim
     data, charset = read_latent_data(args.data)
 
@@ -67,7 +79,7 @@ def decoder(args, model):
         sampled = decode_smiles_from_indexes(sampled, charset)
         print(sampled)
 
-def encoder(args, model):
+def encoder(args, model=MoleculeVAE()):
     latent_dim = args.latent_dim
     data, charset = load_dataset(args.data, split = False)
 
@@ -78,15 +90,14 @@ def encoder(args, model):
 
     x_latent = model.encoder.predict(data)
     if args.save_h5:
-        h5f = h5py.File(args.save_h5, 'w')
-        h5f.create_dataset('charset', data = charset)
-        h5f.create_dataset('latent_vectors', data = x_latent)
-        h5f.close()
+        save_latent_data(args.save_h5, charset, x_latent)
     else:
         np.savetxt(sys.stdout, x_latent, delimiter = '\t')
+    return x_latent
 
 def main():
-    args = get_arguments()
+    parser = get_arguments()
+    args = parser.parse_args()
     model = MoleculeVAE()
 
     if args.target == 'autoencoder':
