@@ -22,6 +22,8 @@ def get_arguments():
                         help="Name of the column that contains the property values to predict. Default: None")
     parser.add_argument('--full_file', type=str,
                         help="Full file without train_test split")
+    parser.add_argument('--test_size', type=float, default=0.2,
+                        help="Size of test set, see sklearn.model_selection.train_test_split for details")
  
     return parser
 
@@ -83,18 +85,22 @@ def main():
     parser = get_arguments()
     args = parser.parse_args()
     structures, charset = get_data(args)
+    test_size = args.test_size if args.test_size < 1 else int(args.test_size)
+    
     
     train_idx, test_idx = map(np.array,
-                              train_test_split(structures.index, test_size = 0.20))
+                              train_test_split(structures.index, test_size = test_size))
 
     h5f = h5py.File(args.outfile, 'w')
     h5f.create_dataset('charset', data = charset)
+    
+    chunk_size = min([len(train_idx), len(test_idx), 1000]) / 2
 
     def create_chunk_dataset(h5file, dataset_name, dataset, dataset_shape,
                              chunk_size=1000, apply_fn=None):
         new_data = h5file.create_dataset(dataset_name, dataset_shape,
                                          chunks=tuple([chunk_size]+list(dataset_shape[1:])))
-        for (chunk_ixs, chunk) in chunk_iterator(dataset):
+        for (chunk_ixs, chunk) in chunk_iterator(dataset, chunk_size=chunk_size):
             if not apply_fn:
                 new_data[chunk_ixs, ...] = chunk
             else:
@@ -105,10 +111,10 @@ def main():
     
     create_chunk_dataset(h5f, 'data_train', train_idx,
                          (len(train_idx), 120, len(charset)),
-                         apply_fn=one_hot_fn)
+                         chunk_size=chunk_size, apply_fn=one_hot_fn)
     create_chunk_dataset(h5f, 'data_test', test_idx,
                          (len(test_idx), 120, len(charset)),
-                         apply_fn=one_hot_fn)
+                         chunk_size=chunk_size, apply_fn=one_hot_fn)
     
     if args.property_column:
         h5f.create_dataset('property_train', data = properties[train_idx])

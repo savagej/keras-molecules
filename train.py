@@ -28,6 +28,8 @@ def get_arguments():
     conv_parser.add_argument('--do_conv_encoder', dest='do_conv_encoder', action='store_true')
     conv_parser.add_argument('--do_recu_encoder', dest='do_conv_encoder', action='store_false')
     parser.set_defaults(do_conv_encoder=True)
+    parser.add_argument('--tensorboard', action='store_true',
+                        help='Turn on tensorboard storage of info. Needs small test data size.')
 
     return parser.parse_args()
 
@@ -38,7 +40,7 @@ def main():
     from molecules.model import MoleculeVAE
     from molecules.utils import one_hot_array, one_hot_index, from_one_hot_array, \
         decode_smiles_from_indexes, load_dataset
-    from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
+    from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, TensorBoard
     
     data_train, data_test, charset = load_dataset(args.data)
     model = MoleculeVAE()
@@ -57,6 +59,12 @@ def main():
                                   factor = 0.2,
                                   patience = 3,
                                   min_lr = 0.0001)
+    
+    tensorboarder = TensorBoard(histogram_freq=1, embeddings_freq=1)
+    if args.tensorboard:
+        callbacks_list = [checkpointer, reduce_lr, tensorboarder]
+    else:
+        callbacks_list = [checkpointer, reduce_lr]
 
     model.autoencoder.fit(
         data_train,
@@ -64,7 +72,7 @@ def main():
         shuffle = True,
         epochs = args.epochs,
         batch_size = args.batch_size,
-        callbacks = [checkpointer, reduce_lr],
+        callbacks = callbacks_list,
         validation_data = (data_test, data_test)
     )
 

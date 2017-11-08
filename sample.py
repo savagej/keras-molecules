@@ -27,8 +27,10 @@ def get_arguments():
                         help='What model to sample from: autoencoder, encoder, decoder.')
     parser.add_argument('--latent_dim', type=int, metavar='N', default=LATENT_DIM,
                         help='Dimensionality of the latent representation.')
-    parser.add_argument('--do_conv_encoder', type=bool, metavar='True', default=True,
-                        help='Whether to use a convolutional or recurrent encoder.')
+    conv_parser = parser.add_mutually_exclusive_group(required=False)
+    conv_parser.add_argument('--do_conv_encoder', dest='do_conv_encoder', action='store_true')
+    conv_parser.add_argument('--do_recu_encoder', dest='do_conv_encoder', action='store_false')
+    parser.set_defaults(do_conv_encoder=True)
     return parser
 
 def read_latent_data(filename):
